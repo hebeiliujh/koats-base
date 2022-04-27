@@ -9,6 +9,7 @@ import 'reflect-metadata';
 import { protectedRouter, unprotectedRouter } from './routes';
 import { logger } from './logger';
 import { JWT_SECRET } from './constants';
+import { response_formatter } from './middlewares/response_formatter';
 
 // establish database connection
 AppDataSource.initialize()
@@ -36,6 +37,8 @@ app.use(async (ctx, next) => {
     ctx.body = { message: err.message };
   }
 });
+
+app.use(response_formatter());
 
 // 响应用户请求
 // 无需 JWT Token 即可访问

@@ -9,6 +9,7 @@ import { JWT_SECRET } from '../constants';
 import { User } from '../entity/user';
 
 const userRepository = AppDataSource.getRepository(User);
+const tokenExpireSeconds = 24 * 60 * 60; // 24 hours
 export default class AuthController {
   public static async login(ctx: Context) {
     const { email, password } = ctx.request.body;
@@ -22,12 +23,13 @@ export default class AuthController {
     } else if (await argon2.verify(user.password, password)) {
       ctx.status = 200;
       ctx.body = {
-        token: jwt.sign({
+        access_token: jwt.sign({
           id: user.id,
           email: user.email
         }, JWT_SECRET, {
-          expiresIn: 24 * 60 * 60 // 24 hours
-        })
+          expiresIn: tokenExpireSeconds
+        }),
+        tokenExpireSeconds
       };
     } else {
       throw new UnauthorizedException('密码错误');
@@ -37,8 +39,6 @@ export default class AuthController {
   public static async register(ctx: Context) {
     const { username, email, password } = ctx.request.body;
     const checkUser = await userRepository.findOneBy({ email });
-    console.log(username, email, password );
-    console.log(checkUser);
     if (checkUser) {
       return ctx.body = {
         message: "该邮箱已注册"
