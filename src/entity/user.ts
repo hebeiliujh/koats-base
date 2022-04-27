@@ -6,10 +6,16 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column()
+  firstName: string
+
+  @Column()
+  lastName: string
+
   @Column({
     length: 50
   })
-  name: string;
+  username: string;
 
   @Column({ select: false })
   password: string;

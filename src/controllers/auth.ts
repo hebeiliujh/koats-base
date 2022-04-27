@@ -1,7 +1,7 @@
 // src/controllers/auth.ts
 import { Context } from 'koa';
 import * as argon2 from 'argon2';
-import { getManager } from 'typeorm';
+import { AppDataSource } from '../app-data-source';
 import jwt from 'jsonwebtoken';
 
 import { UnauthorizedException } from '../exceptions';
@@ -9,8 +9,12 @@ import { JWT_SECRET } from '../constants';
 import { User } from '../entity/user';
 
 export default class AuthController {
+  // constructor() {
+  //   const userRepository = AppDataSource.getRepository(User);
+  // }
+
   public static async login(ctx: Context) {
-    const userRepository = getManager().getRepository(User);
+    const userRepository = AppDataSource.getRepository(User);
 
     const user = await userRepository
       .createQueryBuilder()
@@ -29,10 +33,10 @@ export default class AuthController {
   }
 
   public static async register(ctx: Context) {
-    const userRepository = getManager().getRepository(User);
+    const userRepository = AppDataSource.getRepository(User);
 
     const newUser = new User();
-    newUser.name = ctx.request.body.name;
+    newUser.username = ctx.request.body.username;
     newUser.email = ctx.request.body.email;
     newUser.password = await argon2.hash(ctx.request.body.password);
 
