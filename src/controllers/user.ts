@@ -1,13 +1,14 @@
 // src/controllers/user.ts
 import { Context } from 'koa';
-import { getManager } from 'typeorm';
 
+import { AppDataSource } from '../app-data-source';
 import { NotFoundException, ForbiddenException } from '../exceptions';
 import { User } from '../entity/user';
 
+const userRepository = AppDataSource.getRepository(User)
+
 export default class UserController {
   public static async listUsers(ctx: Context) {
-    const userRepository = getManager().getRepository(User);
     const users = await userRepository.find();
 
     ctx.status = 200;
@@ -15,7 +16,6 @@ export default class UserController {
   }
 
   public static async showUserDetail(ctx: Context) {
-    const userRepository = getManager().getRepository(User);
     const user = await userRepository.findOneBy({id: +ctx.params.id});
 
     if (user) {
@@ -33,7 +33,6 @@ export default class UserController {
       throw new ForbiddenException();
     }
 
-    const userRepository = getManager().getRepository(User);
     await userRepository.update(+ctx.params.id, ctx.request.body);
     const updatedUser = await userRepository.findOneBy({id: +ctx.params.id});
 
@@ -52,7 +51,6 @@ export default class UserController {
       throw new ForbiddenException();
     }
 
-    const userRepository = getManager().getRepository(User);
     await userRepository.delete(+ctx.params.id);
 
     ctx.status = 204;

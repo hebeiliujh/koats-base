@@ -5,7 +5,7 @@ export const AppDataSource = new DataSource({
   host: 'localhost',
   port: 3306,
   username: 'root',
-  password: 'Beige@123456',
+  password: 'Sql@123456',
   database: 'koats',
   entities: ['src/entity/*.ts'],
   logging: true,

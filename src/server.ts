@@ -42,10 +42,14 @@ app.use(async (ctx, next) => {
 app.use(unprotectedRouter.routes()).use(unprotectedRouter.allowedMethods());
 
 // 注册 JWT 中间件
-app.use(jwt({ secret: JWT_SECRET }).unless({ method: 'GET' }));
+// app.use(jwt({ secret: JWT_SECRET }).unless({ method: 'GET' }));
+app.use(jwt({ secret: JWT_SECRET }));
 
 // 需要 JWT Token 才可访问
 app.use(protectedRouter.routes()).use(protectedRouter.allowedMethods());
 
 // 运行服务器
-app.listen(3000);
+app.listen(4400);
+
+console.log('Server start at port: 4400');
+
