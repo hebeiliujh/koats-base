@@ -1,15 +1,17 @@
 import Koa from 'koa';
 import cors from '@koa/cors';
 import bodyParser from 'koa-bodyparser';
-import { AppDataSource } from './app-data-source';
-
+import { koaSwagger } from 'koa2-swagger-ui';
 import jwt from 'koa-jwt';
 import 'reflect-metadata';
 
-import { protectedRouter, unprotectedRouter } from './routes';
+import { AppDataSource } from './app-data-source';
+// import { protectedRouter, unprotectedRouter } from './routes';
+import swaggerRouter from './routes/swagger';
 import { logger } from './logger';
 import { JWT_SECRET } from './constants';
-import { response_formatter } from './middlewares/response_formatter';
+// import { response_formatter } from './middlewares/response_formatter';
+import { routerResponse } from './middlewares/routerResponse';
 
 // establish database connection
 AppDataSource.initialize()
@@ -27,6 +29,12 @@ const app = new Koa();
 app.use(logger());
 app.use(cors());
 app.use(bodyParser());
+app.use(jwt({ secret: JWT_SECRET }).unless({
+  path: [/^\/auth\/login/, /^\/auth\/register/, /^\/swagger/, /^\/public/]
+})); // swagger作为路由必须也排除在外
+app.use(routerResponse())
+app.use(swaggerRouter.routes());
+app.use(swaggerRouter.allowedMethods());
 
 app.use(async (ctx, next) => {
   try {
@@ -38,21 +46,19 @@ app.use(async (ctx, next) => {
   }
 });
 
-app.use(response_formatter());
 
 // 响应用户请求
 // 无需 JWT Token 即可访问
-app.use(unprotectedRouter.routes()).use(unprotectedRouter.allowedMethods());
+// app.use(unprotectedRouter.routes()).use(unprotectedRouter.allowedMethods());
 
 // 注册 JWT 中间件
 // app.use(jwt({ secret: JWT_SECRET }).unless({ method: 'GET' }));
-app.use(jwt({ secret: JWT_SECRET }));
+// app.use(jwt({ secret: JWT_SECRET }));
 
 // 需要 JWT Token 才可访问
-app.use(protectedRouter.routes()).use(protectedRouter.allowedMethods());
+// app.use(protectedRouter.routes()).use(protectedRouter.allowedMethods());
 
 // 运行服务器
 app.listen(4400);
 
 console.log('Server start at port: 4400');
-

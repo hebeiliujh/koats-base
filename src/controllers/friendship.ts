@@ -7,7 +7,14 @@ import { AppDataSource } from '../app-data-source';
 import { NotFoundException } from '../exceptions';
 import { User } from '../entity/user';
 import { Friendship } from '../entity/friendship';
+import { body, description, request, summary, tags } from 'koa-swagger-decorator';
 // import { filterXss } from '../utils/utils';
+
+const tag = tags(['Friendship']);
+const friendshipSchema = {
+  friendId: { type: 'number', required: true },
+  message: { type: 'string' },
+};
 
 // const FRIENDSHIP_REQUESTING = 10;
 // const FRIENDSHIP_REQUESTED = 11;
@@ -26,9 +33,13 @@ const userRepository = AppDataSource.getRepository(User);
 const entityManager = AppDataSource.manager;
 
 export default class FriendController {
-  public static async inviteFriend(ctx: Context) {
-    console.log('ctx.request.body', ctx.request.body);
 
+  @request('post', '/friendship/invite')
+  @summary('添加好友')
+  @description('example of api')
+  @tag
+  @body(friendshipSchema)
+  public static async inviteFriend(ctx: Context) {
     const { friendId, message } = ctx.request.body;
     const errors = await validate(Friendship);
     if (errors.length) {
@@ -64,9 +75,9 @@ export default class FriendController {
       await transactionalEntityManager.save(otherFriendship);
     }).then(() => {
       ctx.status = 201;
-      ctx.body = {
+      ctx.success({
         action: 'AddDirectly',
-      };
+      });
     })
   }
 }

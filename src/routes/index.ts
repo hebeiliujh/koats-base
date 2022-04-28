@@ -1,10 +1,10 @@
 // src/routes.ts
 import Router from '@koa/router';
 
-import AuthController from './controllers/auth';
-import UserController from './controllers/user';
-import FriendController from './controllers/friendship';
-import VideoController from './controllers/video';
+import AuthController from '../controllers/auth';
+import UserController from '../controllers/user';
+import FriendController from '../controllers/friendship';
+import VideoController from '../controllers/video';
 
 const unprotectedRouter = new Router();
 
