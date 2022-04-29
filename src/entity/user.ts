@@ -52,6 +52,26 @@ export class User {
   gender: GENDER;
 
   @Column({
+    default: '',
+    comment: 'user avater'
+  })
+  avater: string;
+  
+  @Column({
+    default: 1,
+    type: 'tinyint',
+    comment: 'is need friendship verify, 1: yes, 0: no',
+  })
+  friVerify: number;
+
+  @Column({
+    default: 1,
+    type: 'tinyint',
+    comment: 'is need groupship verify, 1: yes, 0: no',
+  })
+  groupVerify: number;
+
+  @Column({
     nullable: true,
     default: null,
     comment: 'user last login date',

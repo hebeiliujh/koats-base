@@ -1,5 +1,5 @@
 import { Length } from 'class-validator';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 const FRIEND_REQUEST_MESSAGE_MIN_LENGTH = 0;
 const FRIEND_REQUEST_MESSAGE_MAX_LENGTH = 64;
@@ -36,7 +36,7 @@ export class Friendship {
   message: string;
 
   @Column({
-    default: 10,
+    type: 'tinyint',
     comment: '10-请求, 11-被请求, 20-同意, 21-忽略, 30-被删除, 31-被拉黑'
   })
   status: number;
@@ -49,4 +49,7 @@ export class Friendship {
 
   @CreateDateColumn()
   createdDate: Date;
+
+  @UpdateDateColumn()
+  updatedDate: Date;
 }

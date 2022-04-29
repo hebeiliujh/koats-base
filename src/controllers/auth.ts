@@ -13,7 +13,7 @@ const tag = tags(['Auth']);
 const userSchema = {
   email: { type: 'string', required: true },
   password: { type: 'string', required: true },
-  username: { type: 'string' },
+  username: { type: 'string', required: false },
 };
 
 const userRepository = AppDataSource.getRepository(User);
