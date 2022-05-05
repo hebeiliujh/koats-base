@@ -1,5 +1,8 @@
 // src/entity/user.ts
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany, Index } from 'typeorm';
+import { Blacklist } from './blacklist';
+import { Friendship } from './friendship';
+import { GroupMember } from './group_member';
 
 export enum GENDER {
   MALE = 'male',
@@ -38,9 +41,9 @@ export class User {
   password: string;
 
   @Column({
-    unique: true,
     comment: 'user email'
   })
+  @Index()
   email: string;
 
   @Column({
@@ -70,6 +73,22 @@ export class User {
     comment: 'is need groupship verify, 1: yes, 0: no',
   })
   groupVerify: number;
+
+  @Column({
+    type: 'bigint',
+    default: 0,
+    comment: '时间戳（版本号）'
+  })
+  timestamp: number;
+
+  @OneToMany(() => Friendship, (friendship) => friendship.user)
+  friendship: Friendship[]
+
+  @OneToMany(() => Blacklist, (blacklist) => blacklist.user)
+  blacklist: Blacklist[]
+
+  @OneToMany(() => GroupMember, (groupMember) => groupMember.user)
+  groupMember: GroupMember[]
 
   @Column({
     nullable: true,

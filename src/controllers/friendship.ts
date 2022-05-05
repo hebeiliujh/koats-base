@@ -3,14 +3,18 @@ import { Context } from 'koa';
 import { v4 as uuidv4 } from 'uuid';
 import { validate } from 'class-validator';
 import dayjs from 'dayjs';
+import { body, description, request, summary, tags } from 'koa-swagger-decorator';
+import { In } from 'typeorm';
 
 import { AppDataSource } from '../app-data-source';
 import { NotFoundException } from '../exceptions';
+import FriendshipService from '../services/friendship';
+import BlacklistService from '../services/blacklist';
+import DataVersionService from '../services/dataVersion';
 import { User } from '../entity/user';
 import { Friendship } from '../entity/friendship';
-import { body, description, request, summary, tags } from 'koa-swagger-decorator';
-import FriendshipService from '../services/friendship';
-import { In } from 'typeorm';
+import { Blacklist } from '../entity/blacklist';
+import { DataVersion } from '../entity/data_version';
 // import { filterXss } from '../utils/utils';
 
 const tag = tags(['Friendship']);
@@ -24,7 +28,7 @@ const FRIENDSHIP_REQUESTED = 11;
 const FRIENDSHIP_AGREED = 20;
 const FRIENDSHIP_IGNORED = 21;
 const FRIENDSHIP_DELETED = 30;
-// const FRIENDSHIP_PULLEDBLACK = 31;
+const FRIENDSHIP_PULLEDBLACK = 31;
 // const FRIEND_REQUEST_MESSAGE_MIN_LENGTH = 0;
 // const FRIEND_REQUEST_MESSAGE_MAX_LENGTH = 64;
 // const FRIEND_DISPLAY_NAME_MIN_LENGTH = 1;
@@ -35,7 +39,47 @@ const FRIENDSHIP_DELETED = 30;
 const userRepository = AppDataSource.getRepository(User);
 // const friendshipRepository = AppDataSource.getRepository(Friendship);
 const friendshipService = new FriendshipService();
+const blacklistService = new BlacklistService();
+const dataVersionService = new DataVersionService();
+// const ataVersionRepository = AppDataSource.getRepository(DataVersion);
 const entityManager = AppDataSource.manager;
+
+const removeBlackListPerson = function (currentUserId: string, friendId: any) {
+  return new Promise(function (resolve, reject) {
+    resolve(1);
+    // return rongCloud.user.blacklist.remove(
+    //   Utility.encodeId(currentUserId),
+    //   Utility.encodeId(friendId),
+    //   function (err, resultText) {
+    //     return rongCloud.user.blacklist.remove(
+    //       Utility.encodeId(friendId),
+    //       Utility.encodeId(currentUserId),
+    //       function (err, resultText) {
+    //         return Blacklist.update(
+    //           {
+    //             status: false,
+    //           },
+    //           {
+    //             where: {
+    //               userId: { $in: [currentUserId, friendId] },
+    //               friendId: { $in: [friendId, currentUserId] },
+    //             },
+    //           },
+    //         )
+    //           .then(function (result) {
+    //             console.log('removeBlackListPerson', result);
+    //             Cache.del('user_blacklist_' + currentUserId);
+    //             resolve(result);
+    //           })
+    //           .catch(function (err) {
+    //             reject(err);
+    //           });
+    //       },
+    //     );
+    //   },
+    // );
+  });
+};
 
 export default class FriendController {
   @request('post', '/friendship/invite')
@@ -51,6 +95,7 @@ export default class FriendController {
     }
 
     const { id: currentUserId } = ctx.state.user;
+    const timestamp = Date.now();
 
     const friend = await userRepository.findOneBy({ id: friendId });
 
@@ -62,16 +107,26 @@ export default class FriendController {
 
     if (friend.friVerify === 1) {
       let action: string,
+        blacklist: Blacklist | null,
         fd: Friendship | null,
         fdStatus: number,
         fg: Friendship | null,
         fgStatus: number,
         resultMessage: string,
         unit;
-      [fg, fd] = await Promise.all([
+      [fg, fd, blacklist] = await Promise.all([
         friendshipService.getInfo(currentUserId, friendId),
         friendshipService.getInfo(friendId, currentUserId),
+        blacklistService.getInfo(friendId, currentUserId),
       ]);
+      if (blacklist && blacklist.status && fg?.status == FRIENDSHIP_PULLEDBLACK) {
+        // 不给只加入黑名单的人发送邀请消息
+        // Utility.log('Invite result: %s %s', 'None: blacklisted by friend', 'Do nothing.');
+        return ctx.success({
+          message: 'Do nothing.',
+          action: 'None',
+        });
+      }
       action = 'Added';
       resultMessage = 'Friend added.';
       console.log('fg && fd', fg && fd);
@@ -122,30 +177,58 @@ export default class FriendController {
 
         console.log('[fg]', fg);
         console.log('[fd]', fd);
-        
+
         await entityManager
           .transaction(async (transactionalEntityManager) => {
-            await transactionalEntityManager.update(
-              Friendship,
-              {
-                id: fg?.id,
-              },
-              {
-                status: fgStatus,
-              },
-            );
-            await transactionalEntityManager.update(
-              Friendship,
-              {
-                id: fd?.id,
-              },
-              {
-                status: fdStatus,
-                message,
-              },
-            );
-            // if (fd?.status === FRIENDSHIP_REQUESTED) {
-            // }
+            await Promise.all([
+              await transactionalEntityManager.update(
+                Friendship,
+                {
+                  id: fg?.id,
+                },
+                {
+                  status: fgStatus,
+                  timestamp,
+                },
+              ),
+              await transactionalEntityManager.update(
+                Friendship,
+                {
+                  id: fd?.id,
+                },
+                {
+                  status: fdStatus,
+                  timestamp,
+                  message,
+                },
+              ),
+            ]);
+            await dataVersionService.updateFriendshipVersion(currentUserId, timestamp);
+            if (fd?.status === FRIENDSHIP_REQUESTED) {
+              await dataVersionService.updateFriendshipVersion(friendId, timestamp);
+
+              // Session.getCurrentUserNickname(currentUserId, User).then(function(nickname) {
+              //   return sendContactNotification(currentUserId, nickname, friendId, CONTACT_OPERATION_REQUEST, message, timestamp);
+              // });
+              // Cache.del("friendship_all_" + currentUserId);
+              // Cache.del("friendship_all_" + friendId);
+              // Utility.log('Invite result: %s %s', action, resultMessage);
+              // console.log('fd.status === FRIENDSHIP_REQUESTED')
+              ctx.success({
+                action,
+                message: resultMessage,
+              });
+            } else {
+              removeBlackListPerson(currentUserId, friendId).then(function (result) {
+                // Cache.del('friendship_all_' + currentUserId);
+                // Cache.del('friendship_all_' + friendId);
+                // Utility.log('Invite result: %s %s', action, resultMessage);
+                ctx.success({
+                  action,
+                  message: resultMessage,
+                });
+              });
+            }
           })
           .then(() => {
             ctx.status = 201;

@@ -1,5 +1,6 @@
 import { Length } from 'class-validator';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { User } from './user';
 
 const FRIEND_REQUEST_MESSAGE_MIN_LENGTH = 0;
 const FRIEND_REQUEST_MESSAGE_MAX_LENGTH = 64;
@@ -46,6 +47,16 @@ export class Friendship {
     comment: 'Display channle name'
   })
   channleName: string;
+
+  @Column({
+    type: 'bigint',
+    default: 0,
+    comment: '时间戳（版本号）'
+  })
+  timestamp: number;
+
+  @ManyToOne(() => User, (user) => user.friendship)
+  user: User
 
   @CreateDateColumn()
   createdDate: Date;
