@@ -81,6 +81,29 @@ const removeBlackListPerson = function (currentUserId: string, friendId: any) {
   });
 };
 
+const sendContactNotification = function(userId: any, nickname: any, friendId: any, operation: any, message: any, timestamp: any) {
+  let contactNotificationMessage, encodedFriendId, encodedUserId;
+  // encodedUserId = Utility.encodeId(userId);
+  // encodedFriendId = Utility.encodeId(friendId);
+  contactNotificationMessage = {
+    operation: operation,
+    sourceUserId: encodedUserId,
+    targetUserId: encodedFriendId,
+    message: message,
+    extra: {
+      sourceUserNickname: nickname,
+      version: timestamp
+    }
+  };
+  contactNotificationMessage = JSON.stringify(contactNotificationMessage);
+  // Utility.log('Sending ContactNotificationMessage:', JSON.stringify(contactNotificationMessage));
+  // return rongCloud.message.system.publish(encodedUserId, [encodedFriendId], 'ST:ContactNtf', contactNotificationMessage, function(err, resultText) {
+  //   if (err) {
+  //     return Utility.logError('Error: send contact notification failed: %j', err);
+  //   }
+  // });
+};
+
 export default class FriendController {
   @request('post', '/friendship/invite')
   @summary('添加好友')
