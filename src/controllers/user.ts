@@ -1,16 +1,16 @@
 // src/controllers/user.ts
 import { Context } from 'koa';
+import { description, path, request, summary, tags } from 'koa-swagger-decorator';
 
 import { AppDataSource } from '../app-data-source';
 import { NotFoundException, ForbiddenException } from '../exceptions';
 import { User } from '../entity/user';
-import { body, description, params, path, request, summary, tags } from 'koa-swagger-decorator';
 
 const tag = tags(['User'])
 const userRepository = AppDataSource.getRepository(User)
-const userSchema = {
-  id: { type: 'number', required: true },
-};
+// const userSchema = {
+//   id: { type: 'number', required: true },
+// };
 export default class UserController {
   @request('get', '/users')
   @summary('用户列表')

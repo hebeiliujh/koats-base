@@ -37,7 +37,7 @@ const FRIENDSHIP_PULLEDBLACK = 31;
 // const CONTACT_OPERATION_REQUEST = 'Request';
 
 const userRepository = AppDataSource.getRepository(User);
-// const friendshipRepository = AppDataSource.getRepository(Friendship);
+const friendshipRepository = AppDataSource.getRepository(Friendship);
 const friendshipService = new FriendshipService();
 const blacklistService = new BlacklistService();
 const dataVersionService = new DataVersionService();
@@ -261,35 +261,47 @@ export default class FriendController {
             });
           });
       } else {
-        // if (friendId === currentUserId) {
-        //   console.log('fd.status !== FRIENDSHIP_REQUESTED')
-        // }
-
-        await entityManager
-          .transaction(async (transactionalEntityManager) => {
-            const myFriendship = new Friendship();
-            myFriendship.userId = currentUserId;
-            myFriendship.friendId = friendId;
-            myFriendship.message = '';
-            myFriendship.status = FRIENDSHIP_REQUESTING;
-            myFriendship.channleName = channleName;
-            await transactionalEntityManager.save(myFriendship);
-
-            const otherFriendship = new Friendship();
-            otherFriendship.userId = friendId;
-            otherFriendship.friendId = currentUserId;
-            otherFriendship.message = message;
-            otherFriendship.status = FRIENDSHIP_REQUESTED;
-            otherFriendship.channleName = channleName;
-            await transactionalEntityManager.save(otherFriendship);
-          })
-          .then(() => {
-            ctx.status = 201;
-            ctx.success({
-              action: 'Sent',
-              message: 'Request sent.',
-            });
+        if (friendId === currentUserId) {
+          console.log('fd.status !== FRIENDSHIP_REQUESTED')
+          const fr = new Friendship();
+          fr.userId = currentUserId;
+          fr.friendId = friendId;
+          fr.message = '';
+          fr.status = FRIENDSHIP_AGREED;
+          fr.channleName = channleName;
+          await friendshipRepository.save(fr);
+          ctx.status = 200;
+          ctx.success({
+            action,
+            message: resultMessage,
           });
+        } else {
+          await entityManager
+            .transaction(async (transactionalEntityManager) => {
+              const myFriendship = new Friendship();
+              myFriendship.userId = currentUserId;
+              myFriendship.friendId = friendId;
+              myFriendship.message = '';
+              myFriendship.status = FRIENDSHIP_REQUESTING;
+              myFriendship.channleName = channleName;
+              await transactionalEntityManager.save(myFriendship);
+  
+              const otherFriendship = new Friendship();
+              otherFriendship.userId = friendId;
+              otherFriendship.friendId = currentUserId;
+              otherFriendship.message = message;
+              otherFriendship.status = FRIENDSHIP_REQUESTED;
+              otherFriendship.channleName = channleName;
+              await transactionalEntityManager.save(otherFriendship);
+            })
+            .then(() => {
+              ctx.status = 201;
+              ctx.success({
+                action: 'Sent',
+                message: 'Request sent.',
+              });
+            });
+        }
       }
     } else {
       await entityManager
@@ -361,5 +373,59 @@ export default class FriendController {
         ctx.status = 200;
         ctx.success();
       });
+  }
+
+  @request('post', '/friendship/ignore')
+  @summary('忽略添加好友')
+  @description('example of api')
+  @tag
+  @body(friendshipSchema)
+  public static async ignoreInvite(ctx: Context) {
+    let { friendId } = ctx.request.body;
+    const { id: currentUserId } = ctx.state.user;
+
+    const { affected: affectedCount } = await friendshipRepository.update({
+      userId: currentUserId,
+      friendId: friendId,
+      status: FRIENDSHIP_REQUESTED
+    }, {
+      status: FRIENDSHIP_IGNORED,
+    });
+
+    if (affectedCount === 0) {
+      ctx.fail({
+        message: 'Unknown friend user or invalid status.',
+      });
+    }
+
+    ctx.success();
+  }
+
+  @request('post', '/friendship/delete')
+  @summary('删除好友')
+  @description('example of api')
+  @tag
+  @body(friendshipSchema)
+  public static async deleteInvite(ctx: Context) {
+    let { friendId } = ctx.request.body;
+    const { id: currentUserId } = ctx.state.user;
+
+    const { affected: affectedCount } = await friendshipRepository.update({
+      userId: currentUserId,
+      friendId: friendId,
+      status: In([FRIENDSHIP_AGREED, FRIENDSHIP_PULLEDBLACK])
+    }, {
+      status: FRIENDSHIP_DELETED,
+      displayName: '',
+      message: '',
+    });
+
+    if (affectedCount === 0) {
+      ctx.fail({
+        message: 'Unknown friend user or invalid status.',
+      });
+    }
+
+    ctx.success();
   }
 }

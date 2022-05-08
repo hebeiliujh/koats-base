@@ -1,7 +1,6 @@
 import Koa from 'koa';
 import cors from '@koa/cors';
 import bodyParser from 'koa-bodyparser';
-import { koaSwagger } from 'koa2-swagger-ui';
 import jwt from 'koa-jwt';
 import 'reflect-metadata';
 
