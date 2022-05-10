@@ -31,7 +31,9 @@ export default class AuthController {
     });
 
     if (!user) {
-      throw new UnauthorizedException('用户名不存在');
+      // throw new UnauthorizedException('用户名不存在');
+      ctx.status = 401;
+      ctx.fail('用户名不存在');
     } else if (await argon2.verify(user.password, password)) {
       ctx.status = 200;
       ctx.success({

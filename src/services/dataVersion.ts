@@ -11,4 +11,11 @@ export default class DataVersionService {
       friendshipVersion: timestamp
     });
   }
+  public async updateBlacklistVersion(userId: number, timestamp: number) {
+    return await dataVersionRepository.update({
+      userId
+    }, {
+      blacklistVersion: timestamp
+    });
+  }
 }

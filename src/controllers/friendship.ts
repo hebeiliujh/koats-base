@@ -3,7 +3,7 @@ import { Context } from 'koa';
 import { v4 as uuidv4 } from 'uuid';
 import { validate } from 'class-validator';
 import dayjs from 'dayjs';
-import { body, description, request, summary, tags } from 'koa-swagger-decorator';
+import { body, description, query, request, summary, tags } from 'koa-swagger-decorator';
 import { In } from 'typeorm';
 
 import { AppDataSource } from '../app-data-source';
@@ -14,13 +14,16 @@ import DataVersionService from '../services/dataVersion';
 import { User } from '../entity/user';
 import { Friendship } from '../entity/friendship';
 import { Blacklist } from '../entity/blacklist';
-import { DataVersion } from '../entity/data_version';
 // import { filterXss } from '../utils/utils';
 
 const tag = tags(['Friendship']);
 const friendshipSchema = {
   friendId: { type: 'number', required: true },
   message: { type: 'string', required: false },
+};
+const paginationSchema = {
+  page: { type: 'number', required: false },
+  size: { type: 'number', required: false },
 };
 
 const FRIENDSHIP_REQUESTING = 10;
@@ -38,10 +41,10 @@ const FRIENDSHIP_PULLEDBLACK = 31;
 
 const userRepository = AppDataSource.getRepository(User);
 const friendshipRepository = AppDataSource.getRepository(Friendship);
+const blacklistRepository = AppDataSource.getRepository(Blacklist);
 const friendshipService = new FriendshipService();
 const blacklistService = new BlacklistService();
 const dataVersionService = new DataVersionService();
-// const ataVersionRepository = AppDataSource.getRepository(DataVersion);
 const entityManager = AppDataSource.manager;
 
 const removeBlackListPerson = function (currentUserId: string, friendId: any) {
@@ -81,7 +84,14 @@ const removeBlackListPerson = function (currentUserId: string, friendId: any) {
   });
 };
 
-const sendContactNotification = function(userId: any, nickname: any, friendId: any, operation: any, message: any, timestamp: any) {
+const sendContactNotification = function (
+  userId: any,
+  nickname: any,
+  friendId: any,
+  operation: any,
+  message: any,
+  timestamp: any,
+) {
   let contactNotificationMessage, encodedFriendId, encodedUserId;
   // encodedUserId = Utility.encodeId(userId);
   // encodedFriendId = Utility.encodeId(friendId);
@@ -92,8 +102,8 @@ const sendContactNotification = function(userId: any, nickname: any, friendId: a
     message: message,
     extra: {
       sourceUserNickname: nickname,
-      version: timestamp
-    }
+      version: timestamp,
+    },
   };
   contactNotificationMessage = JSON.stringify(contactNotificationMessage);
   // Utility.log('Sending ContactNotificationMessage:', JSON.stringify(contactNotificationMessage));
@@ -262,7 +272,7 @@ export default class FriendController {
           });
       } else {
         if (friendId === currentUserId) {
-          console.log('fd.status !== FRIENDSHIP_REQUESTED')
+          console.log('fd.status !== FRIENDSHIP_REQUESTED');
           const fr = new Friendship();
           fr.userId = currentUserId;
           fr.friendId = friendId;
@@ -285,7 +295,7 @@ export default class FriendController {
               myFriendship.status = FRIENDSHIP_REQUESTING;
               myFriendship.channleName = channleName;
               await transactionalEntityManager.save(myFriendship);
-  
+
               const otherFriendship = new Friendship();
               otherFriendship.userId = friendId;
               otherFriendship.friendId = currentUserId;
@@ -383,14 +393,19 @@ export default class FriendController {
   public static async ignoreInvite(ctx: Context) {
     let { friendId } = ctx.request.body;
     const { id: currentUserId } = ctx.state.user;
+    const timestamp = Date.now();
 
-    const { affected: affectedCount } = await friendshipRepository.update({
-      userId: currentUserId,
-      friendId: friendId,
-      status: FRIENDSHIP_REQUESTED
-    }, {
-      status: FRIENDSHIP_IGNORED,
-    });
+    const { affected: affectedCount } = await friendshipRepository.update(
+      {
+        userId: currentUserId,
+        friendId: friendId,
+        status: FRIENDSHIP_REQUESTED,
+      },
+      {
+        status: FRIENDSHIP_IGNORED,
+        timestamp,
+      },
+    );
 
     if (affectedCount === 0) {
       ctx.fail({
@@ -398,6 +413,7 @@ export default class FriendController {
       });
     }
 
+    await dataVersionService.updateFriendshipVersion(currentUserId, timestamp);
     ctx.success();
   }
 
@@ -409,16 +425,21 @@ export default class FriendController {
   public static async deleteInvite(ctx: Context) {
     let { friendId } = ctx.request.body;
     const { id: currentUserId } = ctx.state.user;
+    const timestamp = Date.now();
 
-    const { affected: affectedCount } = await friendshipRepository.update({
-      userId: currentUserId,
-      friendId: friendId,
-      status: In([FRIENDSHIP_AGREED, FRIENDSHIP_PULLEDBLACK])
-    }, {
-      status: FRIENDSHIP_DELETED,
-      displayName: '',
-      message: '',
-    });
+    const { affected: affectedCount } = await friendshipRepository.update(
+      {
+        userId: currentUserId,
+        friendId: friendId,
+        status: In([FRIENDSHIP_AGREED, FRIENDSHIP_PULLEDBLACK]),
+      },
+      {
+        status: FRIENDSHIP_DELETED,
+        displayName: '',
+        message: '',
+        timestamp,
+      },
+    );
 
     if (affectedCount === 0) {
       ctx.fail({
@@ -426,6 +447,62 @@ export default class FriendController {
       });
     }
 
+    await dataVersionService.updateFriendshipVersion(currentUserId, timestamp);
+    await blacklistRepository.upsert([{
+      userId: currentUserId,
+      friendId: friendId,
+      status: true,
+      timestamp,
+    }], ['userId', 'friendId']);
+
+    await dataVersionService.updateBlacklistVersion(currentUserId, timestamp)
+
+    await friendshipRepository.update(
+      {
+        userId: currentUserId,
+        friendId: friendId,
+        status: FRIENDSHIP_AGREED
+      },
+      {
+        status: FRIENDSHIP_DELETED,
+        displayName: '',
+        message: '',
+        timestamp: timestamp
+      },
+    );
+
     ctx.success();
+  }
+
+  @request('get', '/friendship/all')
+  @summary('列表')
+  @description('example of api')
+  @tag
+  @query(paginationSchema)
+  public static async listFriendships(ctx: Context) {
+    let { page, size } = ctx.query;
+    const { id: currentUserId } = ctx.state.user;
+    
+    const _page = page ? Number(page) : 1;
+    const _size = size ? Number(size) : 20;
+    const skip: number = (_page - 1) * _size;
+
+    const [friendships, count] = await friendshipRepository.findAndCount({
+      where: {
+        userId: currentUserId,
+        status: FRIENDSHIP_AGREED,
+      },
+      take: _size,
+      skip,
+      relations: {
+        user: true,
+      },
+    });
+
+    ctx.status = 200;
+    ctx.success({
+      friendships,
+      count
+    });
   }
 }
