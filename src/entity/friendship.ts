@@ -1,5 +1,5 @@
 import { Length } from 'class-validator';
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user';
 
 const FRIEND_REQUEST_MESSAGE_MIN_LENGTH = 0;
@@ -56,6 +56,8 @@ export class Friendship {
   timestamp: number;
 
   @ManyToOne(() => User, (user) => user.friendship)
+  @JoinTable()
+  @JoinColumn({ name: 'friendId' })
   user: User
 
   @CreateDateColumn()
