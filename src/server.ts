@@ -1,10 +1,10 @@
 import Koa from 'koa';
 import cors from '@koa/cors';
 import bodyParser from 'koa-bodyparser';
-import { koaSwagger } from 'koa2-swagger-ui';
 import jwt from 'koa-jwt';
 import 'reflect-metadata';
-
+import dotenv from 'dotenv';
+dotenv.config();
 import { AppDataSource } from './app-data-source';
 // import { protectedRouter, unprotectedRouter } from './routes';
 import swaggerRouter from './routes/swagger';
@@ -12,6 +12,8 @@ import { logger } from './logger';
 import { JWT_SECRET } from './constants';
 // import { response_formatter } from './middlewares/response_formatter';
 import { routerResponse } from './middlewares/routerResponse';
+
+import config from './utils/config';
 
 // establish database connection
 AppDataSource.initialize()
@@ -59,6 +61,6 @@ app.use(async (ctx, next) => {
 // app.use(protectedRouter.routes()).use(protectedRouter.allowedMethods());
 
 // 运行服务器
-app.listen(4400);
+app.listen(config.APP_PORT);
 
-console.log('Server start at port: 4400');
+console.log(`Server start at port: ${config.APP_PORT}`);

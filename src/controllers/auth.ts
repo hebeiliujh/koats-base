@@ -74,7 +74,7 @@ export default class AuthController {
     const user = await userRepository.save(newUser);
 
     ctx.status = 201;
-    ctx.success(user);
+    ctx.success('创建成功');
   }
 
   @request('get', '/auth/profile')

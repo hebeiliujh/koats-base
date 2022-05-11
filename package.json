@@ -34,6 +34,7 @@
     "crc-32": "^1.2.2",
     "cuint": "^0.2.2",
     "dayjs": "^1.11.1",
+    "dotenv": "^16.0.1",
     "jsonwebtoken": "^8.5.1",
     "koa": "^2.13.4",
     "koa-bodyparser": "^4.3.0",
