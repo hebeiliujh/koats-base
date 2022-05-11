@@ -14,7 +14,7 @@ import DataVersionService from '../services/dataVersion';
 import { User } from '../entity/user';
 import { Friendship } from '../entity/friendship';
 import { Blacklist } from '../entity/blacklist';
-// import { filterXss } from '../utils/utils';
+import { handlePages } from '../utils/pagination';
 
 const tag = tags(['Friendship']);
 const friendshipSchema = {
@@ -501,8 +501,8 @@ export default class FriendController {
 
     ctx.status = 200;
     ctx.success({
-      friendships,
-      count
+      data: friendships,
+      ...handlePages(_page, _size, count)
     });
   }
 }
