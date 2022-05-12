@@ -61,6 +61,6 @@ app.use(async (ctx, next) => {
 // app.use(protectedRouter.routes()).use(protectedRouter.allowedMethods());
 
 // 运行服务器
-app.listen(config.APP_PORT);
+app.listen(config.app.APP_PORT);
 
-console.log(`Server start at port: ${config.APP_PORT}`);
+console.log(`Server start at port: ${config.app.APP_PORT}`);

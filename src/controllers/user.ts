@@ -5,6 +5,8 @@ import { description, path, request, summary, tags } from 'koa-swagger-decorator
 import { AppDataSource } from '../app-data-source';
 import { NotFoundException, ForbiddenException } from '../exceptions';
 import { User } from '../entity/user';
+import { handlePages } from '../utils/pagination';
+import { Not } from 'typeorm';
 
 const tag = tags(['User'])
 const userRepository = AppDataSource.getRepository(User)
@@ -17,10 +19,25 @@ export default class UserController {
   @description('example of api')
   @tag
   public static async listUsers(ctx: Context) {
-    const users = await userRepository.find();
+    let { page, size } = ctx.query;
+
+    const _page = page ? Number(page) : 1;
+    const _size = size ? Number(size) : 20;
+    const skip: number = (_page - 1) * _size;
+
+    const [users, count] = await userRepository.findAndCount({
+      where: {
+        id: Not(+ctx.state.user.id)
+      },
+      take: _size,
+      skip,
+    });
 
     ctx.status = 200;
-    ctx.success(users);
+    ctx.success({
+      data: users,
+      ...handlePages(_page, _size, count)
+    });
   }
 
   @request('get', '/users/:id')

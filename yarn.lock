@@ -344,7 +344,7 @@ aggregate-error@^3.0.0:
 
 agora-access-token@^2.0.4:
   version "2.0.4"
-  resolved "https://repo.huaweicloud.com/repository/npm/agora-access-token/-/agora-access-token-2.0.4.tgz#6a6d5996011f6000035d923342296c2594d94f82"
+  resolved "https://registry.npmmirror.com/agora-access-token/-/agora-access-token-2.0.4.tgz#6a6d5996011f6000035d923342296c2594d94f82"
   integrity sha512-RtOIvi4PqV1ok3rdnopMZeVwiUqZgG9Pp56kqxJc5cU/+ljRBzs1Al+IThD5ahm528dGsdY1TyP1bJdqmgBCbQ==
   dependencies:
     crc-32 "1.2.0"

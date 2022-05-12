@@ -1,5 +1,5 @@
 // src/entity/user.ts
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany, Index } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany, Index, JoinTable, JoinColumn } from 'typeorm';
 import { Blacklist } from './blacklist';
 import { Friendship } from './friendship';
 import { GroupMember } from './group_member';
@@ -59,6 +59,22 @@ export class User {
     comment: 'user avater'
   })
   avater: string;
+
+  @Column({
+    nullable: true,
+    default: null,
+    length: 32,
+    comment: 'user slogan'
+  })
+  slogan: string;
+
+  @Column({
+    type: 'text',
+    nullable: true,
+    default: null,
+    comment: 'user description'
+  })
+  description: string;
   
   @Column({
     default: 1,

@@ -48,8 +48,8 @@ const dataVersionService = new DataVersionService();
 const entityManager = AppDataSource.manager;
 
 const removeBlackListPerson = function (currentUserId: string, friendId: any) {
-  return new Promise(function (resolve, reject) {
-    resolve(1);
+  // return new Promise(function (resolve, reject) {
+  //   resolve(1);
     // return rongCloud.user.blacklist.remove(
     //   Utility.encodeId(currentUserId),
     //   Utility.encodeId(friendId),
@@ -81,7 +81,7 @@ const removeBlackListPerson = function (currentUserId: string, friendId: any) {
     //     );
     //   },
     // );
-  });
+  // });
 };
 
 const sendContactNotification = function (
@@ -128,7 +128,7 @@ export default class FriendController {
     }
 
     const { id: currentUserId } = ctx.state.user;
-    const timestamp = Date.now();
+    let timestamp = Date.now();
 
     const friend = await userRepository.findOneBy({ id: friendId });
 
@@ -162,7 +162,7 @@ export default class FriendController {
       }
       action = 'Added';
       resultMessage = 'Friend added.';
-      console.log('fg && fd', fg && fd);
+      console.log('fg, fd, blacklist', fg, fd, blacklist);
       if (fg && fd) {
         if (fg.status === FRIENDSHIP_AGREED && fd.status === FRIENDSHIP_AGREED) {
           ctx.status = 400;
@@ -185,7 +185,7 @@ export default class FriendController {
           fgStatus = FRIENDSHIP_AGREED;
           fdStatus = FRIENDSHIP_AGREED;
           message = fd.message;
-          // timestamp = fd.timestamp;
+          timestamp = fd.timestamp;
         } else if (
           (fg.status === FRIENDSHIP_DELETED && fd.status === FRIENDSHIP_DELETED) ||
           (fg.status === FRIENDSHIP_AGREED && fd.status === FRIENDSHIP_DELETED) ||
@@ -207,9 +207,6 @@ export default class FriendController {
             message: 'Do nothing.',
           });
         }
-
-        console.log('[fg]', fg);
-        console.log('[fd]', fd);
 
         await entityManager
           .transaction(async (transactionalEntityManager) => {
@@ -252,15 +249,29 @@ export default class FriendController {
                 message: resultMessage,
               });
             } else {
-              removeBlackListPerson(currentUserId, friendId).then(function (result) {
-                // Cache.del('friendship_all_' + currentUserId);
-                // Cache.del('friendship_all_' + friendId);
-                // Utility.log('Invite result: %s %s', action, resultMessage);
-                ctx.success({
-                  action,
-                  message: resultMessage,
-                });
+              const result = await blacklistRepository.update(
+                {
+                  userId: In([currentUserId, friendId]),
+                  friendId: In([friendId, currentUserId]),
+                },
+                {
+                  status: false,
+                },
+              );
+              console.log('removeBlackListPerson', result);
+              ctx.success({
+                action,
+                message: resultMessage,
               });
+              // removeBlackListPerson(currentUserId, friendId).then(function (result) {
+              //   // Cache.del('friendship_all_' + currentUserId);
+              //   // Cache.del('friendship_all_' + friendId);
+              //   // Utility.log('Invite result: %s %s', action, resultMessage);
+              //   ctx.success({
+              //     action,
+              //     message: resultMessage,
+              //   });
+              // });
             }
           })
           .then(() => {
@@ -417,7 +428,7 @@ export default class FriendController {
     ctx.success();
   }
 
-  @request('post', '/friendship/delete')
+  @request('delete', '/friendship/delete')
   @summary('删除好友')
   @description('example of api')
   @tag
@@ -450,7 +461,7 @@ export default class FriendController {
     await dataVersionService.updateFriendshipVersion(currentUserId, timestamp);
     await blacklistRepository.upsert([{
       userId: currentUserId,
-      friendId: friendId,
+      friendId,
       status: true,
       timestamp,
     }], ['userId', 'friendId']);
@@ -504,5 +515,44 @@ export default class FriendController {
       data: friendships,
       ...handlePages(_page, _size, count)
     });
+  }
+
+  @request('get', '/friendship/check')
+  @summary('检查好友关系')
+  @description('example of api')
+  @tag
+  @query({
+    friendIds: { type: 'string', required: true },
+  })
+  public static async CheckFriendships(ctx: Context) {
+    const { id: currentUserId } = ctx.state.user;
+    const { friendIds } = ctx.query;
+
+    if (!friendIds) {
+      return ctx.fail('Need friendIds');
+    }
+    const _friendIds = String(friendIds).split(',');
+
+    const friendships = await friendshipRepository.find({
+      where: {
+        userId: currentUserId,
+        friendId: In(_friendIds),
+        status: FRIENDSHIP_AGREED,
+      },
+    });
+
+    const friendshipMap = _friendIds.reduce((prv, f) => ({
+      ...prv,
+      [f]: -1
+    }), {});
+    console.log('friendshipMap', friendshipMap);
+    
+    friendships.forEach(friend => {
+      console.log('friend', friend);
+      friendshipMap[friend.friendId] = friend.status;
+    });
+
+    ctx.status = 200;
+    ctx.success(friendshipMap);
   }
 }
