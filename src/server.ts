@@ -1,10 +1,14 @@
 import Koa from 'koa';
 import cors from '@koa/cors';
 import bodyParser from 'koa-bodyparser';
+import koaBody from 'koa-body';
+import koaStatic from 'koa-static';
 import jwt from 'koa-jwt';
 import 'reflect-metadata';
+import { join } from 'path';
 import dotenv from 'dotenv';
 dotenv.config();
+
 import { AppDataSource } from './app-data-source';
 // import { protectedRouter, unprotectedRouter } from './routes';
 import swaggerRouter from './routes/swagger';
@@ -30,9 +34,20 @@ const app = new Koa();
 // 注册中间件
 app.use(logger());
 app.use(cors());
+app.use(koaBody({
+  multipart: true,
+  formidable: {
+    maxFileSize: 200*1024*1024, // 设置上传文件大小最大限制，默认2M
+    // 上传目录
+    uploadDir: join(__dirname, '../public/images'),
+    // 保留文件扩展名
+    keepExtensions: true,
+  }
+}));
+app.use(koaStatic(join(__dirname, '../public')));
 app.use(bodyParser());
 app.use(jwt({ secret: JWT_SECRET }).unless({
-  path: [/^\/auth\/login/, /^\/auth\/register/, /^\/swagger/, /^\/public/]
+  path: [/^\/auth\/login/, /^\/auth\/register/, /^\/common\/upload/, /^\/swagger/, /^\/public/]
 })); // swagger作为路由必须也排除在外
 app.use(routerResponse())
 app.use(swaggerRouter.routes());
