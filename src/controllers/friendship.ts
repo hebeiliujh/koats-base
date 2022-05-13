@@ -47,40 +47,50 @@ const blacklistService = new BlacklistService();
 const dataVersionService = new DataVersionService();
 const entityManager = AppDataSource.manager;
 
-const removeBlackListPerson = function (currentUserId: string, friendId: any) {
+const removeBlackListPerson = async (currentUserId: string, friendId: any) => {
+  return await blacklistRepository.update(
+    {
+      userId: In([currentUserId, friendId]),
+      friendId: In([friendId, currentUserId]),
+    },
+    {
+      status: false,
+    },
+  );
+  // console.log('removeBlackListPerson', result);
   // return new Promise(function (resolve, reject) {
   //   resolve(1);
-    // return rongCloud.user.blacklist.remove(
-    //   Utility.encodeId(currentUserId),
-    //   Utility.encodeId(friendId),
-    //   function (err, resultText) {
-    //     return rongCloud.user.blacklist.remove(
-    //       Utility.encodeId(friendId),
-    //       Utility.encodeId(currentUserId),
-    //       function (err, resultText) {
-    //         return Blacklist.update(
-    //           {
-    //             status: false,
-    //           },
-    //           {
-    //             where: {
-    //               userId: { $in: [currentUserId, friendId] },
-    //               friendId: { $in: [friendId, currentUserId] },
-    //             },
-    //           },
-    //         )
-    //           .then(function (result) {
-    //             console.log('removeBlackListPerson', result);
-    //             Cache.del('user_blacklist_' + currentUserId);
-    //             resolve(result);
-    //           })
-    //           .catch(function (err) {
-    //             reject(err);
-    //           });
-    //       },
-    //     );
-    //   },
-    // );
+  // return rongCloud.user.blacklist.remove(
+  //   Utility.encodeId(currentUserId),
+  //   Utility.encodeId(friendId),
+  //   function (err, resultText) {
+  //     return rongCloud.user.blacklist.remove(
+  //       Utility.encodeId(friendId),
+  //       Utility.encodeId(currentUserId),
+  //       function (err, resultText) {
+  //         return Blacklist.update(
+  //           {
+  //             status: false,
+  //           },
+  //           {
+  //             where: {
+  //               userId: { $in: [currentUserId, friendId] },
+  //               friendId: { $in: [friendId, currentUserId] },
+  //             },
+  //           },
+  //         )
+  //           .then(function (result) {
+  //             console.log('removeBlackListPerson', result);
+  //             Cache.del('user_blacklist_' + currentUserId);
+  //             resolve(result);
+  //           })
+  //           .catch(function (err) {
+  //             reject(err);
+  //           });
+  //       },
+  //     );
+  //   },
+  // );
   // });
 };
 
@@ -249,16 +259,7 @@ export default class FriendController {
                 message: resultMessage,
               });
             } else {
-              const result = await blacklistRepository.update(
-                {
-                  userId: In([currentUserId, friendId]),
-                  friendId: In([friendId, currentUserId]),
-                },
-                {
-                  status: false,
-                },
-              );
-              console.log('removeBlackListPerson', result);
+              await removeBlackListPerson(currentUserId, friendId);
               ctx.success({
                 action,
                 message: resultMessage,
@@ -291,64 +292,90 @@ export default class FriendController {
           fr.status = FRIENDSHIP_AGREED;
           fr.channleName = channleName;
           await friendshipRepository.save(fr);
+          await dataVersionService.updateFriendshipVersion(currentUserId, timestamp);
           ctx.status = 200;
           ctx.success({
             action,
             message: resultMessage,
           });
         } else {
-          await entityManager
-            .transaction(async (transactionalEntityManager) => {
-              const myFriendship = new Friendship();
-              myFriendship.userId = currentUserId;
-              myFriendship.friendId = friendId;
-              myFriendship.message = '';
-              myFriendship.status = FRIENDSHIP_REQUESTING;
-              myFriendship.channleName = channleName;
-              await transactionalEntityManager.save(myFriendship);
+          await entityManager.transaction(async (transactionalEntityManager) => {
+            const myFriendship = new Friendship();
+            myFriendship.userId = currentUserId;
+            myFriendship.friendId = friendId;
+            myFriendship.message = '';
+            myFriendship.status = FRIENDSHIP_REQUESTING;
+            myFriendship.timestamp = timestamp;
+            myFriendship.channleName = channleName;
+            await transactionalEntityManager.save(myFriendship);
 
-              const otherFriendship = new Friendship();
-              otherFriendship.userId = friendId;
-              otherFriendship.friendId = currentUserId;
-              otherFriendship.message = message;
-              otherFriendship.status = FRIENDSHIP_REQUESTED;
-              otherFriendship.channleName = channleName;
-              await transactionalEntityManager.save(otherFriendship);
-            })
-            .then(() => {
-              ctx.status = 201;
-              ctx.success({
-                action: 'Sent',
-                message: 'Request sent.',
-              });
-            });
+            const otherFriendship = new Friendship();
+            otherFriendship.userId = friendId;
+            otherFriendship.friendId = currentUserId;
+            otherFriendship.message = message;
+            otherFriendship.status = FRIENDSHIP_REQUESTED;
+            otherFriendship.timestamp = timestamp;
+            otherFriendship.channleName = channleName;
+            await transactionalEntityManager.save(otherFriendship);
+          });
+
+          await Promise.all([
+            dataVersionService.updateFriendshipVersion(currentUserId, timestamp),
+            dataVersionService.updateFriendshipVersion(friendId, timestamp),
+          ]);
+
+          ctx.status = 201;
+          ctx.success({
+            action: 'Sent',
+            message: 'Request sent.',
+          });
         }
       }
     } else {
-      await entityManager
-        .transaction(async (transactionalEntityManager) => {
-          const myFriendship = new Friendship();
-          myFriendship.userId = Number(currentUserId);
-          myFriendship.friendId = friendId;
-          myFriendship.message = message;
-          myFriendship.status = FRIENDSHIP_AGREED;
-          myFriendship.channleName = channleName;
-          await transactionalEntityManager.save(myFriendship);
+      await removeBlackListPerson(currentUserId, friendId);
 
-          const otherFriendship = new Friendship();
-          otherFriendship.userId = friendId;
-          otherFriendship.friendId = Number(currentUserId);
-          otherFriendship.message = message;
-          otherFriendship.status = FRIENDSHIP_AGREED;
-          otherFriendship.channleName = channleName;
-          await transactionalEntityManager.save(otherFriendship);
-        })
-        .then(() => {
-          ctx.status = 201;
-          ctx.success({
-            action: 'AddDirectly',
-          });
-        });
+      await friendshipRepository.upsert(
+        [
+          {
+            userId: currentUserId,
+            friendId,
+            message,
+            status: FRIENDSHIP_AGREED,
+            channleName,
+            timestamp,
+          },
+          {
+            userId: friendId,
+            friendId: currentUserId,
+            message,
+            status: FRIENDSHIP_AGREED,
+            channleName,
+            timestamp,
+          },
+        ],
+        ['userId', 'friendId'],
+      );
+      // await entityManager.transaction(async (_transactionalEntityManager) => {
+        // const myFriendship = new Friendship();
+        // myFriendship.userId = Number(currentUserId);
+        // myFriendship.friendId = friendId;
+        // myFriendship.message = message;
+        // myFriendship.status = FRIENDSHIP_AGREED;
+        // myFriendship.channleName = channleName;
+        // await transactionalEntityManager.save(myFriendship);
+
+        // const otherFriendship = new Friendship();
+        // otherFriendship.userId = friendId;
+        // otherFriendship.friendId = Number(currentUserId);
+        // otherFriendship.message = message;
+        // otherFriendship.status = FRIENDSHIP_AGREED;
+        // otherFriendship.channleName = channleName;
+        // await transactionalEntityManager.save(otherFriendship);
+      // });
+      ctx.status = 201;
+      ctx.success({
+        action: 'AddDirectly',
+      });
     }
   }
 
@@ -459,26 +486,31 @@ export default class FriendController {
     }
 
     await dataVersionService.updateFriendshipVersion(currentUserId, timestamp);
-    await blacklistRepository.upsert([{
-      userId: currentUserId,
-      friendId,
-      status: true,
-      timestamp,
-    }], ['userId', 'friendId']);
+    await blacklistRepository.upsert(
+      [
+        {
+          userId: currentUserId,
+          friendId,
+          status: true,
+          timestamp,
+        },
+      ],
+      ['userId', 'friendId'],
+    );
 
-    await dataVersionService.updateBlacklistVersion(currentUserId, timestamp)
+    await dataVersionService.updateBlacklistVersion(currentUserId, timestamp);
 
     await friendshipRepository.update(
       {
         userId: currentUserId,
         friendId: friendId,
-        status: FRIENDSHIP_AGREED
+        status: FRIENDSHIP_AGREED,
       },
       {
         status: FRIENDSHIP_DELETED,
         displayName: '',
         message: '',
-        timestamp: timestamp
+        timestamp: timestamp,
       },
     );
 
@@ -493,7 +525,7 @@ export default class FriendController {
   public static async listFriendships(ctx: Context) {
     let { page, size } = ctx.query;
     const { id: currentUserId } = ctx.state.user;
-    
+
     const _page = page ? Number(page) : 1;
     const _size = size ? Number(size) : 20;
     const skip: number = (_page - 1) * _size;
@@ -513,7 +545,7 @@ export default class FriendController {
     ctx.status = 200;
     ctx.success({
       data: friendships,
-      ...handlePages(_page, _size, count)
+      ...handlePages(_page, _size, count),
     });
   }
 
@@ -541,13 +573,16 @@ export default class FriendController {
       },
     });
 
-    const friendshipMap = _friendIds.reduce((prv, f) => ({
-      ...prv,
-      [f]: -1
-    }), {});
+    const friendshipMap = _friendIds.reduce(
+      (prv, f) => ({
+        ...prv,
+        [f]: -1,
+      }),
+      {},
+    );
     console.log('friendshipMap', friendshipMap);
-    
-    friendships.forEach(friend => {
+
+    friendships.forEach((friend) => {
       console.log('friend', friend);
       friendshipMap[friend.friendId] = friend.status;
     });
