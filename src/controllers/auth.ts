@@ -91,4 +91,19 @@ export default class AuthController {
     ctx.status = 200;
     ctx.success(user);
   }
+
+  @request('put', '/auth/profile')
+  @summary('设置用户信息')
+  @description('set user profile')
+  @tag
+  public static async editProfile(ctx: Context) {
+    const { id } = ctx.state.user;
+    const reqUser = ctx.request.body;
+    const editRes = await userRepository.update({ id }, reqUser);
+    if (editRes.affected) {
+      ctx.status = 201;
+      ctx.success();
+    }
+
+  }
 }

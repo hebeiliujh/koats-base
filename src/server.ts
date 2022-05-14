@@ -31,6 +31,23 @@ AppDataSource.initialize()
 // 初始化 Koa 应用实例
 const app = new Koa();
 
+app.use(routerResponse());
+app.use(async (ctx, next) => {
+  try {
+    await next();
+  } catch (err) {
+    ctx.status = err.status || 500;
+    let message = err.message;
+    const code = ctx.status;
+
+    if(err.status === 401){
+      ctx.status = 401;
+      message = 'Protected resource, use Authorization header to get access';
+    }
+    ctx.fail(message, code);
+  }
+});
+
 // 注册中间件
 app.use(logger());
 app.use(cors());
@@ -49,20 +66,8 @@ app.use(bodyParser());
 app.use(jwt({ secret: JWT_SECRET }).unless({
   path: [/^\/auth\/login/, /^\/auth\/register/, /^\/common\/upload/, /^\/swagger/, /^\/public/]
 })); // swagger作为路由必须也排除在外
-app.use(routerResponse())
 app.use(swaggerRouter.routes());
 app.use(swaggerRouter.allowedMethods());
-
-app.use(async (ctx, next) => {
-  try {
-    await next();
-  } catch (err) {
-    // 只返回 JSON 格式的响应
-    ctx.status = err.status || 500;
-    ctx.body = { message: err.message };
-  }
-});
-
 
 // 响应用户请求
 // 无需 JWT Token 即可访问

@@ -56,9 +56,9 @@ export class User {
 
   @Column({
     default: '',
-    comment: 'user avater'
+    comment: 'user avatar'
   })
-  avater: string;
+  avatar: string;
 
   @Column({
     nullable: true,

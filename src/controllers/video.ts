@@ -16,25 +16,27 @@ const agoraService = new AgoraService();
 
 export default class VideoController {
   @request('get', '/video/genAccessTokenByChatRoomID')
-  @summary('通过chatroomId，获取rtc token')
+  @summary('通过chatRoomId，获取rtc token')
   @description('example of api')
   @tag
   @query({
-    chatroomId: {
+    chatRoomId: {
       type: 'string',
       required: true,
       default: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-      description: 'chatroomId',
+      description: 'chatRoomId',
     },
   })
   public static async genAccessTokenByChatRoomID(ctx: Context) {
-    const { chatroomId } = ctx.query;
+    const { chatRoomId } = ctx.query;
     const { id: uid } = ctx.state.user;
+    console.log('[chatRoomId]', chatRoomId);
+    
     try {
-      const token = await agoraService.generateRtcTokenByUid(uid, String(chatroomId));
+      const token = await agoraService.generateRtcTokenByUid(uid, String(chatRoomId));
 
       ctx.status = 200;
-      ctx.success(token);
+      ctx.success({ token });
     } catch (error) {
       // throw new NotFoundException('get token fail');
       ctx.status = 404;

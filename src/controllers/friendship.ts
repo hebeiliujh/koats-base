@@ -355,23 +355,7 @@ export default class FriendController {
         ],
         ['userId', 'friendId'],
       );
-      // await entityManager.transaction(async (_transactionalEntityManager) => {
-        // const myFriendship = new Friendship();
-        // myFriendship.userId = Number(currentUserId);
-        // myFriendship.friendId = friendId;
-        // myFriendship.message = message;
-        // myFriendship.status = FRIENDSHIP_AGREED;
-        // myFriendship.channleName = channleName;
-        // await transactionalEntityManager.save(myFriendship);
 
-        // const otherFriendship = new Friendship();
-        // otherFriendship.userId = friendId;
-        // otherFriendship.friendId = Number(currentUserId);
-        // otherFriendship.message = message;
-        // otherFriendship.status = FRIENDSHIP_AGREED;
-        // otherFriendship.channleName = channleName;
-        // await transactionalEntityManager.save(otherFriendship);
-      // });
       ctx.status = 201;
       ctx.success({
         action: 'AddDirectly',
@@ -455,11 +439,13 @@ export default class FriendController {
     ctx.success();
   }
 
-  @request('delete', '/friendship/delete')
+  @request('post', '/friendship/delete')
   @summary('删除好友')
   @description('example of api')
   @tag
-  @body(friendshipSchema)
+  @body({
+    friendId: { type: 'number', required: true },
+  })
   public static async deleteInvite(ctx: Context) {
     let { friendId } = ctx.request.body;
     const { id: currentUserId } = ctx.state.user;
