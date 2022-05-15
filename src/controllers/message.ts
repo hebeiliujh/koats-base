@@ -20,11 +20,49 @@ export default class MessageController {
 
       ctx.status = 200;
       // ctx.body = { token };
-      ctx.success(token);
+      ctx.success({ token });
     } catch (error) {
       // throw new NotFoundException("get token fail");
       ctx.status = 404;
       ctx.fail('get token fail');
     }
   }
+
+  // @request('get', '/message/getConversationId')
+  // @summary('通过用户id，获取ConversationId')
+  // @description('example of api')
+  // @tag
+  // @query({
+  //   dialogistId: { type: 'string', required: true, default: '1', description: 'dialogistId' },
+  // })
+  // public static async getConversationId(ctx: Context) {
+  //   const { dialogistId } = ctx.query;
+  //   const { id: uid } = ctx.state.user;
+
+  //   if (dialogistId?.includes(',')) {
+  //     const dialogistIds = (dialogistId as string).split(',').map(id => Number(id));
+  //     const friendships = await friendshipRepository.find({
+  //       where: {
+  //         userId: uid,
+  //         friendId: In(dialogistIds)
+  //       }
+  //     });
+  //     return ctx.success(friendships);
+  //   }
+
+  //   const friendship = await friendshipRepository.findOne({
+  //     where: {
+  //       userId: uid,
+  //       friendId: Number(dialogistId)
+  //     }
+  //   });
+
+  //   if (!friendship) {
+  //     // throw new NotFoundException("Friendship not found");
+  //     ctx.status = 404;
+  //     return ctx.fail('Friendship not found');
+  //   }
+  //   // ctx.body = friendship;
+  //   ctx.success(friendship);
+  // }
 }
