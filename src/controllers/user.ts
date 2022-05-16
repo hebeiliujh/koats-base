@@ -6,7 +6,7 @@ import { AppDataSource } from '../app-data-source';
 import { NotFoundException, ForbiddenException } from '../exceptions';
 import { User } from '../entity/user';
 import { handlePages } from '../utils/pagination';
-import { Not } from 'typeorm';
+import { Like, Not } from 'typeorm';
 
 const tag = tags(['User'])
 const userRepository = AppDataSource.getRepository(User)
@@ -19,16 +19,23 @@ export default class UserController {
   @description('example of api')
   @tag
   public static async listUsers(ctx: Context) {
-    let { page, size } = ctx.query;
+    let { page, size, username = '' } = ctx.query;
 
     const _page = page ? Number(page) : 1;
     const _size = size ? Number(size) : 20;
+    username = String(username)
     const skip: number = (_page - 1) * _size;
 
+    const whereOptions: any = {
+      id: Not(+ctx.state.user.id)
+    }
+
+    if (!!username) {
+      whereOptions.username = Like(`%${username}%`)
+    }
+
     const [users, count] = await userRepository.findAndCount({
-      where: {
-        id: Not(+ctx.state.user.id)
-      },
+      where: whereOptions,
       take: _size,
       skip,
     });
