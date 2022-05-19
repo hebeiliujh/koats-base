@@ -7,12 +7,16 @@ export class Blacklist {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  @Index()
+  @Column({
+    unique: true
+  })
+  // @Index()
   userId: number;
 
-  @Column()
-  @Index()
+  @Column({
+    unique: true
+  })
+  // @Index()
   friendId: number;
 
   @Column({

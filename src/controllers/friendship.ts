@@ -3,11 +3,12 @@ import { Context } from 'koa';
 import { v4 as uuidv4 } from 'uuid';
 import { validate } from 'class-validator';
 import dayjs from 'dayjs';
-import { body, description, query, request, summary, tags } from 'koa-swagger-decorator';
+import { body, description, path, query, request, summary, tags } from 'koa-swagger-decorator';
 import { In } from 'typeorm';
 
 import { AppDataSource } from '../app-data-source';
 import { NotFoundException } from '../exceptions';
+import UserService from '../services/user';
 import FriendshipService from '../services/friendship';
 import BlacklistService from '../services/blacklist';
 import DataVersionService from '../services/dataVersion';
@@ -42,6 +43,7 @@ const FRIENDSHIP_PULLEDBLACK = 31;
 const userRepository = AppDataSource.getRepository(User);
 const friendshipRepository = AppDataSource.getRepository(Friendship);
 const blacklistRepository = AppDataSource.getRepository(Blacklist);
+const userService = new UserService();
 const friendshipService = new FriendshipService();
 const blacklistService = new BlacklistService();
 const dataVersionService = new DataVersionService();
@@ -146,7 +148,10 @@ export default class FriendController {
       throw new NotFoundException('User not found');
     }
 
-    const channleName = uuidv4();
+    const channelName = uuidv4();
+    console.log('[channelName]', channelName);
+    const conversationId = uuidv4();
+    console.log('[conversationId]', conversationId);
 
     if (friend.friVerify === 1) {
       let action: string,
@@ -290,7 +295,8 @@ export default class FriendController {
           fr.friendId = friendId;
           fr.message = '';
           fr.status = FRIENDSHIP_AGREED;
-          fr.channleName = channleName;
+          fr.channelName = channelName;
+          fr.conversationId = conversationId;
           await friendshipRepository.save(fr);
           await dataVersionService.updateFriendshipVersion(currentUserId, timestamp);
           ctx.status = 200;
@@ -306,7 +312,8 @@ export default class FriendController {
             myFriendship.message = '';
             myFriendship.status = FRIENDSHIP_REQUESTING;
             myFriendship.timestamp = timestamp;
-            myFriendship.channleName = channleName;
+            myFriendship.channelName = channelName;
+            myFriendship.conversationId = conversationId;
             await transactionalEntityManager.save(myFriendship);
 
             const otherFriendship = new Friendship();
@@ -315,7 +322,8 @@ export default class FriendController {
             otherFriendship.message = message;
             otherFriendship.status = FRIENDSHIP_REQUESTED;
             otherFriendship.timestamp = timestamp;
-            otherFriendship.channleName = channleName;
+            otherFriendship.channelName = channelName;
+            otherFriendship.conversationId = conversationId;
             await transactionalEntityManager.save(otherFriendship);
           });
 
@@ -341,7 +349,7 @@ export default class FriendController {
             friendId,
             message,
             status: FRIENDSHIP_AGREED,
-            channleName,
+            channelName,
             timestamp,
           },
           {
@@ -349,7 +357,7 @@ export default class FriendController {
             friendId: currentUserId,
             message,
             status: FRIENDSHIP_AGREED,
-            channleName,
+            channelName,
             timestamp,
           },
         ],
@@ -439,22 +447,22 @@ export default class FriendController {
     ctx.success();
   }
 
-  @request('post', '/friendship/delete')
+  @request('delete', '/friendship/delete/:friendId')
   @summary('删除好友')
   @description('example of api')
   @tag
-  @body({
+  @path({
     friendId: { type: 'number', required: true },
   })
   public static async deleteInvite(ctx: Context) {
-    let { friendId } = ctx.request.body;
+    let { friendId } = ctx.params;
     const { id: currentUserId } = ctx.state.user;
     const timestamp = Date.now();
 
     const { affected: affectedCount } = await friendshipRepository.update(
       {
         userId: currentUserId,
-        friendId: friendId,
+        friendId: Number(friendId),
         status: In([FRIENDSHIP_AGREED, FRIENDSHIP_PULLEDBLACK]),
       },
       {
@@ -472,35 +480,40 @@ export default class FriendController {
     }
 
     await dataVersionService.updateFriendshipVersion(currentUserId, timestamp);
-    await blacklistRepository.upsert(
-      [
+    const isFriendExists = await userService.checkUserExists(friendId);
+    if (isFriendExists) {
+      await blacklistRepository.upsert(
+        [
+          {
+            userId: currentUserId,
+            friendId,
+            status: true,
+            timestamp,
+          },
+        ],
+        ['userId', 'friendId'],
+      );
+  
+      await dataVersionService.updateBlacklistVersion(currentUserId, timestamp);
+  
+      await friendshipRepository.update(
         {
           userId: currentUserId,
-          friendId,
-          status: true,
-          timestamp,
+          friendId: friendId,
+          status: FRIENDSHIP_AGREED,
         },
-      ],
-      ['userId', 'friendId'],
-    );
-
-    await dataVersionService.updateBlacklistVersion(currentUserId, timestamp);
-
-    await friendshipRepository.update(
-      {
-        userId: currentUserId,
-        friendId: friendId,
-        status: FRIENDSHIP_AGREED,
-      },
-      {
-        status: FRIENDSHIP_DELETED,
-        displayName: '',
-        message: '',
-        timestamp: timestamp,
-      },
-    );
-
-    ctx.success();
+        {
+          status: FRIENDSHIP_DELETED,
+          displayName: '',
+          message: '',
+          timestamp: timestamp,
+        },
+      );
+      ctx.success();
+    } else {
+      ctx.status = 404;
+      ctx.fail('friendId is not an available userId.', 404);
+    }
   }
 
   @request('get', '/friendship/all')

@@ -12,13 +12,15 @@ export class Friendship {
 
   @Column({
     default: 0,
-    comment: 'UserId'
+    comment: 'UserId',
+    unique: true
   })
   userId: number;
 
   @Column({
     default: 0,
-    comment: 'FriendId'
+    comment: 'FriendId',
+    unique: true
   })
   friendId: number;
   
@@ -44,9 +46,15 @@ export class Friendship {
 
   @Column({
     default: '',
-    comment: 'Display channle name'
+    comment: 'Display channel name'
   })
-  channleName: string;
+  channelName: string;
+
+  @Column({
+    default: '',
+    comment: 'Display conversation Id'
+  })
+  conversationId: string;
 
   @Column({
     type: 'bigint',

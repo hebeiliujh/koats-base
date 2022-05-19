@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 import { Blacklist } from './blacklist';
 import { Friendship } from './friendship';
 import { GroupMember } from './group_member';
+import { Message } from './message';
 
 export enum GENDER {
   MALE = 'male',
@@ -99,6 +100,9 @@ export class User {
 
   @OneToMany(() => Friendship, (friendship) => friendship.user)
   friendship: Friendship[]
+
+  @OneToMany(() => Message, (message) => message.user)
+  message: Message[]
 
   @OneToMany(() => Blacklist, (blacklist) => blacklist.user)
   blacklist: Blacklist[]
