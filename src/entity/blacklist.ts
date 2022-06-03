@@ -1,21 +1,18 @@
-import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
 import { User } from './user';
 
 @Entity()
+@Unique('blacklist_unique', ['userId', 'friendId'])
 export class Blacklist {
 
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({
-    unique: true
-  })
+  @Column()
   // @Index()
   userId: number;
 
-  @Column({
-    unique: true
-  })
+  @Column()
   // @Index()
   friendId: number;
 

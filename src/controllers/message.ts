@@ -169,6 +169,6 @@ export default class MessageController {
     const result = await messageRepository.save(message);
 
     ctx.status = 200;
-    ctx.success(result);
+    ctx.success({...result, user: { id: uid }});
   }
 }

@@ -1,7 +1,8 @@
 import { Buffer } from 'buffer';
-import { aesEncrypt } from '../utils/utils';
-
 import { RtcTokenBuilder, RtmTokenBuilder, RtcRole, RtmRole } from 'agora-access-token';
+
+import { aesEncrypt } from '../utils/utils';
+import config from '../utils/config';
 
 interface IAgoraConfig {
   appId: string;
@@ -11,8 +12,8 @@ interface IAgoraConfig {
 const expirationTimeInSeconds = 3600;
 
 const agoraConfig: IAgoraConfig = {
-  appId: '9f0c045f563b481bac3f0cf3ccd56714',
-  appCertificate: '32a4ca378bd34b4b8c110950e5f1d076',
+  appId: config.agoraConfig.appId as string,
+  appCertificate: config.agoraConfig.appCertificate as string,
 };
 
 const appID = agoraConfig.appId;

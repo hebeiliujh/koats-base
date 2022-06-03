@@ -1,26 +1,25 @@
 import { Length } from 'class-validator';
-import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
 import { User } from './user';
 
 const FRIEND_REQUEST_MESSAGE_MIN_LENGTH = 0;
 const FRIEND_REQUEST_MESSAGE_MAX_LENGTH = 64;
 
 @Entity()
+@Unique('friendship_unique', ['userId', 'friendId'])
 export class Friendship {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({
     default: 0,
-    comment: 'UserId',
-    unique: true
+    comment: 'UserId'
   })
   userId: number;
 
   @Column({
     default: 0,
-    comment: 'FriendId',
-    unique: true
+    comment: 'FriendId'
   })
   friendId: number;
   

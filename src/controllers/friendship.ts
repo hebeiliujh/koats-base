@@ -350,6 +350,7 @@ export default class FriendController {
             message,
             status: FRIENDSHIP_AGREED,
             channelName,
+            conversationId,
             timestamp,
           },
           {
@@ -358,6 +359,7 @@ export default class FriendController {
             message,
             status: FRIENDSHIP_AGREED,
             channelName,
+            conversationId,
             timestamp,
           },
         ],
